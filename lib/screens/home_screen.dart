@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../providers/daily_log_provider.dart';
+import '../providers/today_missions_provider.dart';
 import '../core/theme.dart';
 import '../services/ai_companion.dart';
 import 'dashboard_screen.dart';
@@ -119,12 +120,16 @@ class TodayLogScreen extends ConsumerWidget {
             _buildCurrentTimeBlockTask(context, ref, todayLog),
             const SizedBox(height: 24),
 
+            // TODO / Remember Widget
+            const TodoRememberCard(),
+            const SizedBox(height: 24),
+
             // Quick Start Command Centers (Expanded)
             _buildExpandedCommandCenters(context),
             const SizedBox(height: 24),
 
             // Today's Missions
-            _buildTodayMissions(context),
+            _buildTodayMissions(context, ref),
             const SizedBox(height: 24),
 
             // Quick Metrics
@@ -133,10 +138,6 @@ class TodayLogScreen extends ConsumerWidget {
 
             // Quick Actions
             _buildQuickActions(context, ref),
-            const SizedBox(height: 24),
-
-            // TODO / Remember Widget
-            const TodoRememberCard(),
             const SizedBox(height: 24),
 
             // Daily Sections
@@ -599,8 +600,10 @@ class TodayLogScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildTodayMissions(BuildContext context) {
-    final missions = AICompanion.getDailyMissions(DateTime.now());
+  Widget _buildTodayMissions(BuildContext context, WidgetRef ref) {
+    final missions = ref.watch(todayMissionsProvider);
+    final completed = missions.values.where((v) => v).length;
+    final total = missions.length;
     
     return Card(
       child: Padding(
@@ -616,23 +619,72 @@ class TodayLogScreen extends ConsumerWidget {
                   'Today\'s Missions',
                   style: Theme.of(context).textTheme.headlineMedium,
                 ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryTeal.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppTheme.primaryTeal),
+                  ),
+                  child: Text(
+                    '$completed/$total',
+                    style: const TextStyle(
+                      color: AppTheme.primaryTeal,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
               ],
             ),
-            const SizedBox(height: 12),
-            ...missions.map((mission) => Padding(
+            const SizedBox(height: 16),
+            if (total > 0)
+              LinearProgressIndicator(
+                value: completed / total,
+                backgroundColor: Colors.white12,
+                valueColor: const AlwaysStoppedAnimation(AppTheme.primaryTeal),
+                minHeight: 8,
+                borderRadius: BorderRadius.circular(4),
+              ),
+            const SizedBox(height: 16),
+            ...missions.entries.map((entry) => Padding(
                   padding: const EdgeInsets.only(bottom: 8),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('•', style: TextStyle(color: AppTheme.primaryTeal, fontSize: 20)),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          mission,
-                          style: Theme.of(context).textTheme.bodyMedium,
+                  child: InkWell(
+                    onTap: () => ref.read(todayMissionsProvider.notifier).toggleMission(entry.key),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: entry.value 
+                            ? AppTheme.primaryTeal.withOpacity(0.2) 
+                            : AppTheme.darkBackground,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: entry.value ? AppTheme.primaryTeal : Colors.white24,
                         ),
                       ),
-                    ],
+                      child: Row(
+                        children: [
+                          Icon(
+                            entry.value ? Icons.check_circle : Icons.radio_button_unchecked,
+                            color: entry.value ? AppTheme.primaryTeal : Colors.white38,
+                            size: 24,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              entry.key,
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    decoration: entry.value
+                                        ? TextDecoration.lineThrough
+                                        : TextDecoration.none,
+                                    color: entry.value ? Colors.white38 : Colors.white70,
+                                  ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 )),
           ],

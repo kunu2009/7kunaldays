@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/theme.dart';
 import '../providers/theme_provider.dart';
+import '../providers/daily_missions_provider.dart';
 
 class DailyMissionsScreen extends ConsumerStatefulWidget {
   const DailyMissionsScreen({super.key});
@@ -11,33 +12,6 @@ class DailyMissionsScreen extends ConsumerStatefulWidget {
 }
 
 class _DailyMissionsScreenState extends ConsumerState<DailyMissionsScreen> {
-  final Map<String, List<Map<String, dynamic>>> _missions = {
-    'academics': [
-      {'name': 'Complete 2 deep study blocks (History + Constitution)', 'target': '240 minutes total', 'completed': false, 'progress': 0.0},
-      {'name': 'Revise one subject summary (write 1-page notes)', 'target': '45 minutes', 'completed': false, 'progress': 0.0},
-      {'name': 'Attempt 1 Legal Aptitude mini-mock (timed 30 min)', 'target': '1 test', 'completed': false, 'progress': 0.0},
-      {'name': 'Review last mock\'s mistakes (write 5 corrections)', 'target': '30 minutes', 'completed': false, 'progress': 0.0},
-      {'name': 'Constitution (Articles 1–10) — read + 10 active recall Qs', 'target': '30 minutes', 'completed': false, 'progress': 0.0},
-    ],
-    'fitness': [
-      {'name': 'Morning workout (Jumping Jacks, Pushups, Squats, Hanging, Plank)', 'target': 'Completed sets', 'completed': false, 'progress': 0.0},
-      {'name': 'Drink 2.5 L water today', 'target': '2.5 liters', 'completed': false, 'progress': 0.0},
-      {'name': 'Evening mobility walk 20 min', 'target': '20 min logged', 'completed': false, 'progress': 0.0},
-      {'name': 'Posture checks (5 times during day)', 'target': '5 checks', 'completed': false, 'progress': 0.0},
-      {'name': 'Sleep by 10:45 PM', 'target': 'Lights off by 10:45', 'completed': false, 'progress': 0.0},
-    ],
-    'brand': [
-      {'name': 'Draft 1 7K short script (30–60 sec idea)', 'target': '1 script', 'completed': false, 'progress': 0.0},
-      {'name': 'Log 3 content ideas into Vault', 'target': '3 ideas', 'completed': false, 'progress': 0.0},
-      {'name': 'Edit/Upload 1 short (if recorded)', 'target': '1 upload', 'completed': false, 'progress': 0.0},
-    ],
-    'confidence': [
-      {'name': 'Mirror talk', 'target': '3 minutes recorded', 'completed': false, 'progress': 0.0},
-      {'name': 'Read aloud (10 min) to practice voice', 'target': '10 minutes', 'completed': false, 'progress': 0.0},
-      {'name': 'Start 1 conversation outside comfort zone', 'target': '1 conversation', 'completed': false, 'progress': 0.0},
-    ],
-  };
-
   void _addMission(String category) {
     final nameController = TextEditingController();
     final targetController = TextEditingController();
@@ -74,14 +48,11 @@ class _DailyMissionsScreenState extends ConsumerState<DailyMissionsScreen> {
           ElevatedButton(
             onPressed: () {
               if (nameController.text.isNotEmpty && targetController.text.isNotEmpty) {
-                setState(() {
-                  _missions[category]!.add({
-                    'name': nameController.text,
-                    'target': targetController.text,
-                    'completed': false,
-                    'progress': 0.0,
-                  });
-                });
+                ref.read(dailyMissionsProvider.notifier).addMission(
+                  category,
+                  nameController.text,
+                  targetController.text,
+                );
                 Navigator.pop(context);
               }
             },
@@ -92,40 +63,12 @@ class _DailyMissionsScreenState extends ConsumerState<DailyMissionsScreen> {
     );
   }
 
-  void _toggleMission(String category, int index) {
-    setState(() {
-      final mission = _missions[category]![index];
-      mission['completed'] = !(mission['completed'] ?? false);
-      mission['progress'] = mission['completed'] ? 1.0 : 0.0;
-    });
-  }
-
-  void _updateProgress(String category, int index, double value) {
-    setState(() {
-      final mission = _missions[category]![index];
-      mission['progress'] = value;
-      mission['completed'] = value >= 1.0;
-    });
-  }
-
-  void _deleteMission(String category, int index) {
-    setState(() {
-      _missions[category]!.removeAt(index);
-    });
-  }
-
-  int get _totalMissions {
-    return _missions.values.fold(0, (sum, list) => sum + list.length);
-  }
-
-  int get _completedMissions {
-    return _missions.values.fold(0, (sum, list) => 
-      sum + list.where((m) => m['completed'] == true).length);
-  }
-
   @override
   Widget build(BuildContext context) {
     final themeMode = ref.watch(themeProvider);
+    final missionsNotifier = ref.watch(dailyMissionsProvider.notifier);
+    final totalMissions = missionsNotifier.totalMissions;
+    final completedMissions = missionsNotifier.completedMissions;
     
     return Scaffold(
       appBar: AppBar(
@@ -187,7 +130,7 @@ class _DailyMissionsScreenState extends ConsumerState<DailyMissionsScreen> {
           const SizedBox(height: 24),
 
           // Overall Progress
-          if (_totalMissions > 0)
+          if (totalMissions > 0)
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(20),
@@ -208,14 +151,14 @@ class _DailyMissionsScreenState extends ConsumerState<DailyMissionsScreen> {
                             width: 120,
                             height: 120,
                             child: CircularProgressIndicator(
-                              value: _completedMissions / _totalMissions,
+                              value: completedMissions / totalMissions,
                               strokeWidth: 12,
                               backgroundColor: Colors.white12,
                               valueColor: AlwaysStoppedAnimation(AppTheme.getStudyColor(themeMode)),
                             ),
                           ),
                           Text(
-                            '${((_completedMissions / _totalMissions) * 100).toInt()}%',
+                            '${((completedMissions / totalMissions) * 100).toInt()}%',
                             style: Theme.of(context).textTheme.displaySmall?.copyWith(
                                   color: AppTheme.getStudyColor(themeMode),
                                 ),
@@ -225,7 +168,7 @@ class _DailyMissionsScreenState extends ConsumerState<DailyMissionsScreen> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      '$_completedMissions of $_totalMissions missions completed',
+                      '$completedMissions of $totalMissions missions completed',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ],
@@ -238,8 +181,8 @@ class _DailyMissionsScreenState extends ConsumerState<DailyMissionsScreen> {
   }
 
   Widget _buildMissionCategory(String category, String title, IconData icon, Color color, AppThemeMode themeMode) {
-    final missions = _missions[category]!;
-    final completed = missions.where((m) => m['completed'] == true).length;
+    final missions = ref.watch(dailyMissionsProvider)[category]!;
+    final completed = missions.where((m) => m.completed).length;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -306,7 +249,7 @@ class _DailyMissionsScreenState extends ConsumerState<DailyMissionsScreen> {
                       color: Colors.red,
                       child: const Icon(Icons.delete, color: Colors.white),
                     ),
-                    onDismissed: (_) => _deleteMission(category, index),
+                    onDismissed: (_) => ref.read(dailyMissionsProvider.notifier).deleteMission(category, index),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       child: Column(
@@ -315,31 +258,31 @@ class _DailyMissionsScreenState extends ConsumerState<DailyMissionsScreen> {
                           Row(
                             children: [
                               Checkbox(
-                                value: mission['completed'],
-                                onChanged: (_) => _toggleMission(category, index),
+                                value: mission.completed,
+                                onChanged: (_) => ref.read(dailyMissionsProvider.notifier).toggleMission(category, index),
                               ),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      mission['name'],
+                                      mission.name,
                                       style: TextStyle(
                                         fontWeight: FontWeight.w500,
-                                        decoration: mission['completed']
+                                        decoration: mission.completed
                                             ? TextDecoration.lineThrough
                                             : null,
                                       ),
                                     ),
                                     Text(
-                                      mission['target'],
+                                      mission.target,
                                       style: Theme.of(context).textTheme.bodySmall,
                                     ),
                                   ],
                                 ),
                               ),
                               Text(
-                                '${(mission['progress'] * 100).toInt()}%',
+                                '${(mission.progress * 100).toInt()}%',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: color,
@@ -352,8 +295,8 @@ class _DailyMissionsScreenState extends ConsumerState<DailyMissionsScreen> {
                             children: [
                               Expanded(
                                 child: Slider(
-                                  value: mission['progress'],
-                                  onChanged: (value) => _updateProgress(category, index, value),
+                                  value: mission.progress,
+                                  onChanged: (value) => ref.read(dailyMissionsProvider.notifier).updateProgress(category, index, value),
                                   activeColor: color,
                                   inactiveColor: Colors.white12,
                                 ),
