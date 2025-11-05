@@ -58,10 +58,9 @@ class TodayMissionsNotifier extends StateNotifier<Map<String, bool>> {
   }
 
   void toggleMission(String mission) {
-    state = {
-      ...state,
-      mission: !(state[mission] ?? false),
-    };
+    final newState = Map<String, bool>.from(state);
+    newState[mission] = !(newState[mission] ?? false);
+    state = newState;
     _saveMissions();
   }
 

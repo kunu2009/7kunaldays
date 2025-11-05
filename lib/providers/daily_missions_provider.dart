@@ -138,10 +138,9 @@ class DailyMissionsNotifier extends StateNotifier<Map<String, List<DailyMission>
     missions[index].completed = !missions[index].completed;
     missions[index].progress = missions[index].completed ? 1.0 : 0.0;
     
-    state = {
-      ...state,
-      category: missions,
-    };
+    final newState = Map<String, List<DailyMission>>.from(state);
+    newState[category] = missions;
+    state = newState;
     _saveMissions();
   }
 
@@ -150,10 +149,9 @@ class DailyMissionsNotifier extends StateNotifier<Map<String, List<DailyMission>
     missions[index].progress = progress;
     missions[index].completed = progress >= 1.0;
     
-    state = {
-      ...state,
-      category: missions,
-    };
+    final newState = Map<String, List<DailyMission>>.from(state);
+    newState[category] = missions;
+    state = newState;
     _saveMissions();
   }
 
@@ -161,10 +159,9 @@ class DailyMissionsNotifier extends StateNotifier<Map<String, List<DailyMission>
     final missions = List<DailyMission>.from(state[category]!);
     missions.removeAt(index);
     
-    state = {
-      ...state,
-      category: missions,
-    };
+    final newState = Map<String, List<DailyMission>>.from(state);
+    newState[category] = missions;
+    state = newState;
     _saveMissions();
   }
 
